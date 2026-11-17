@@ -17,6 +17,15 @@ build_request(scene, mood, style, intensity, custom_lore="", seed=None, track_id
   - `"seed": int` — pinned int if given, else 831001
 - NO length/duration kwarg — YuE2 has none (confirmed in `docs/generation.md`).
 
+Additions (announced in team chat, non-breaking):
+- Style tag order now matches `API_NOTES.md` exactly: language →
+  genre/instruments → mood → **tempo** → scene → lore → instrumental last.
+- `custom_lore` is sanitized before it touches the style string: all whitespace
+  collapsed, control chars stripped, capped at `LORE_MAX_LEN` (200). P4 can
+  pass raw user text straight through.
+- New optional export `TOOLTIPS` — hover text for the four dropdowns. P4 MAY
+  wire it (`gr.Dropdown(info=...)`); nothing else consumes it.
+
 Dropdown label sets (must match `app.py` dropdowns exactly):
 - Scene: keys of `SCENE_MAP` — Mood: keys of `MOOD_MAP`
 - Style: keys of `STYLE_MAP` — Intensity: keys of `BPM_MAP`

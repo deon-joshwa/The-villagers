@@ -1,7 +1,7 @@
 # ROLE-P5.md — you are the Pitch & Demo agent
 
-**Your human owns the 3 minutes that decide everything: the pitch. You start at
-Hour 0, not Hour 6 — the pitch is half the judges' score.**
+**Your human owns the 5 minutes that decide everything: the pitch. You start
+at Hour 0, not Hour 6 — the pitch is half the judges' score.**
 
 ## Your files (only these)
 `pitch/` (create it: slides, runbook, mock assets)
@@ -33,10 +33,24 @@ Produce every demo asset, the runbook, and rehearse the team.
 3. **Rehearsal #1 at Hour 4–5** (with team, time it), **#2 at Hour 6–7**,
    final timing at 7.5 — then your human owns the machine.
 
-## The 3-minute arc (from plan §9)
-ComfyUI node-graph horror (40 s) → 4 dropdowns + one boss-lore sentence + show
-the compiled prompt (50 s) → the ABC score reveal while the progress bar runs
-(60 s) → play the track, license close (30 s).
+## The Founder's Arena format (Day 2 — the real rules)
+
+- **5:00 pitch + live demo, STRICT** — overrunning attracts negative marks.
+  Rehearse to 4:30. Full script and demo click order: `pitch/demo-runbook.md`.
+- **Q&A up to 5:00** — technical, business, marketing, financial, investment.
+  EVERY member must answer anything: `pitch/qa-cards.md`, all members read it.
+- **Repo link is submitted** — the repo must be made PUBLIC before submission
+  (Settings → General → Danger Zone), and the submitted link is `main`.
+- Shark Tank simulation: be ready to justify the $400K ask, the $4M post-money
+  valuation (Suno $5.4B / Udio $200M+ comparables), the 10% equity, and the
+  five-layer revenue model — all pre-written in `pitch/qa-cards.md`.
+- PPT optional (max 8 slides) — default is demo-first; 6 slides max if used.
+
+## The 5:00 arc
+Hook: ComfyUI node-graph horror (40 s) → LIVE DEMO: 4 dropdowns + one
+boss-lore sentence + compiled prompt + ABC score reveal + preset track over
+the boss screen (120 s) → how it works, local on 8 GB (40 s) → market +
+revenue model (40 s) → the ask + close with the track playing (40 s).
 
 ## Verify
 Runbook fits on one page. Every demo click exists in `app.py` as shipped.
