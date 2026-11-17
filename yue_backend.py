@@ -164,13 +164,51 @@ class YueStudio:
         except OSError as e:
             raise GenerationError("Could not read score file at '%s': %s" % (score_path, e)) from e
 
-        out, merged = [], False
-        for line in lines:
+        out = []
+        i = 0
+        merged = False
+        while i < len(lines):
+            line = lines[i]
             if re.match(r"^\s*V:\s*Vocal\b", line, re.IGNORECASE):
-                out.append(re.sub(r"(?i)\bvocal\b", "Ins", line, count=1))
                 merged = True
-            else:
-                out.append(line)
+                if "clef=" in line.lower() or "name=" in line.lower():
+                    out.append(line)
+                    i += 1
+                    continue
+
+                vocal_body = lines[i + 1] if i + 1 < len(lines) else ""
+                ins_idx = -1
+                for j in range(i + 1, min(i + 4, len(lines))):
+                    if re.match(r"^\s*V:\s*Ins\b", lines[j], re.IGNORECASE):
+                        ins_idx = j
+                        break
+
+                if ins_idx != -1:
+                    ins_body = lines[ins_idx + 1] if ins_idx + 1 < len(lines) else ""
+                    no_chords = re.sub(r'"[^"]*"', '', vocal_body.strip())
+                    if re.search(r'[A-Ga-g]', no_chords):
+                        parts = vocal_body.strip().split('|')
+                        rest_parts = []
+                        for p in parts:
+                            if not p:
+                                continue
+                            ch = re.findall(r'"[^"]*"', p)
+                            ch_str = ch[0] if ch else ""
+                            rest_parts.append(f"{ch_str}z16")
+                        new_vocal_body = "|".join(rest_parts) + "|\n"
+                        new_ins_body = vocal_body if ("Z" in ins_body or not re.search(r'[A-Ga-g]', re.sub(r'"[^"]*"', '', ins_body))) else ins_body
+                        out.append(line)
+                        out.append(new_vocal_body)
+                        out.append(lines[ins_idx])
+                        out.append(new_ins_body)
+                        i = ins_idx + 2
+                        continue
+                else:
+                    out.append(re.sub(r"(?i)\bvocal\b", "Ins", line, count=1))
+                    i += 1
+                    continue
+            out.append(line)
+            i += 1
 
         if not merged:
             raise GenerationError(

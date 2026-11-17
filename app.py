@@ -10,6 +10,7 @@ All failures surface as gr.Error(...) with a human sentence. demo.queue() stays
 
 import inspect
 import os
+import time
 
 import gradio as gr
 
@@ -176,6 +177,7 @@ with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
         def cb(stage, done, total):     # YuE2 native stages: "nar", "vae"
             progress(done / max(total, 1), desc=stage.upper())
 
+        t0 = time.time()
         try:
             req = build_request(scene, mood, style, intensity, lore, seed=42)
             out = studio().generate(req, os.path.join("outputs", req["id"]), on_progress=cb, duration=duration_sec)
@@ -183,7 +185,8 @@ with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
             raise gr.Error(str(e))
         except Exception:
             raise gr.Error("Something went wrong. Try a preset instead.")
-        note = "**Done in %s s (%.1fs track).**" % (out.get("duration_s", duration_sec), out.get("duration_s", duration_sec))
+        elapsed = time.time() - t0
+        note = "**Done in %.1fs (%.1fs track generated).**" % (elapsed, out.get("duration_s", duration_sec))
         if out["truncated"]:
             note += " ⚠️ **TRUNCATED** by the token cap (shorter than the plan asked for)."
         return out["flac"], read_text(out["score"]), out["wav"], note
