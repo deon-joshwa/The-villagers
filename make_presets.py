@@ -4,6 +4,11 @@ Run in the 3.12 venv AFTER setup.bat:  python make_presets.py
 Real renders replace the placeholder silent WAVs in showcase/.
 """
 
+import os
+import shutil
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 from prompt_compiler import build_request
 from yue_backend import YueStudio
 
@@ -18,12 +23,33 @@ PRESETS = [
 
 
 def main():
+    from yue2 import YuE2Pipeline
+    from yue2.protocol import GenerationConfig, Sampling
     studio = YueStudio()
+    pipe = YuE2Pipeline.from_pretrained(
+        "m-a-p/YuE2-3B",
+        device="cuda",
+        low_vram=True,
+        cache_dir="hf_cache",
+        quantization="fp8",
+        local_files_only=True
+    )
+    pipe.generation_config = GenerationConfig(
+        abc=Sampling(0.7, 0.9, 30, 1.005, 100, 32, 1200),
+        semantic=Sampling(1.0, 0.95, 100, 1.2, 50, 200, 2000),
+        ode_steps=32
+    )
+    studio._pipe = pipe
     for scene, mood, style, intensity, seed in PRESETS:
         req = build_request(scene, mood, style, intensity,
                             seed=seed, track_id="showcase_%d" % seed)
-        out = studio.generate(req, "showcase")
-        print("done:", out["wav"], "truncated:", out["truncated"], flush=True)
+        run_dir = os.path.join("showcase", "build_%d" % seed)
+        out = studio.generate(req, run_dir)
+        target_wav = os.path.join("showcase", "showcase_%d.wav" % seed)
+        target_abc = os.path.join("showcase", "showcase_%d.abc" % seed)
+        shutil.copy2(out["wav"], target_wav)
+        shutil.copy2(out["score"], target_abc)
+        print("done: %s -> %s (truncated: %s)" % (out["wav"], target_wav, out["truncated"]), flush=True)
 
 
 if __name__ == "__main__":
