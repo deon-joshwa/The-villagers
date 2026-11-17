@@ -32,9 +32,11 @@ YuE2Pipeline.from_pretrained(
 | `abc` | str | optional: supply an edited score directly (requires `cot="full"` or `"melody"`) |
 | `cfg_scale` | float | optional text-guidance; defaults are fine |
 
-- **There is NO duration / clip-length / token-cap parameter.** Length follows the
-  symbolic plan; on low VRAM it is effectively capped by the token budget (8 GB
-  reference run used ~6,000 tokens, `low_vram=True`).
+- **There is NO duration / clip-length parameter in the request payload.** However, duration is strictly controllable at the sampling layer:
+  - YuE2 audio operates at 48,000 Hz with hop 1,920 = **25 semantic tokens per second**.
+  - `duration_seconds` maps to `semantic_max_tokens = int(duration_s * 25)` and `abc_max_tokens = min(1200, max(300, int(duration_s * 15)))`.
+  - Pass overrides via `pipe(**request, abc_sampling=Sampling(max_tokens=...), semantic_sampling=Sampling(max_tokens=...))`.
+  - Capping duration to 30–45s reduces generation time to ~2–3 minutes and prevents runaway memory spikes during 32-step NAR flow matching on 8 GB VRAM.
 - `generate` and `batch` validate request fields before loading models
   (CLI: `yue2 validate --request examples/song.json`).
 

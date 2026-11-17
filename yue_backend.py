@@ -7,6 +7,8 @@ import json
 import os
 import re
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import soundfile as sf
 
 
@@ -61,13 +63,37 @@ class YueStudio:
                     ) from e
         return self._pipe
 
-    def generate(self, request, out_dir, on_progress=None):
+    def generate(self, request, out_dir, on_progress=None, duration=None):
         """Generate one clip. on_progress: YuE2 native callback(stage, completed, total)
-        for stages 'nar' and 'vae' -- wire it straight into gr.Progress."""
+        for stages 'nar' and 'vae' -- wire it straight into gr.Progress.
+        duration: Clip length in seconds (default: 45.0s, rate: 25 tokens/s).
+        """
         os.makedirs(out_dir, exist_ok=True)
+        dur = float(duration) if duration is not None else 45.0
+        # 25 tokens per second for semantic AR audio (hop: 1920 @ 48kHz)
+        semantic_tokens = min(3000, max(250, int(dur * 25)))
+        # ABC planning: ~15 tokens per second (min 300, max 1200)
+        abc_tokens = min(1200, max(300, int(dur * 15)))
+
+        from yue2.protocol import Sampling
+        abc_sampling = Sampling(temperature=0.7, top_p=0.9, top_k=30, repetition_penalty=1.005,
+                                penalty_window=100, min_tokens=32, max_tokens=abc_tokens)
+        semantic_sampling = Sampling(temperature=1.0, top_p=0.95, top_k=100, repetition_penalty=1.2,
+                                     penalty_window=50, min_tokens=100, max_tokens=semantic_tokens)
+
         try:
-            song = self.pipe(**request, on_progress=on_progress)
+            try:
+                song = self.pipe(**request, abc_sampling=abc_sampling,
+                                 semantic_sampling=semantic_sampling, on_progress=on_progress)
+            except TypeError:
+                song = self.pipe(**request, on_progress=on_progress)
             song.save_artifacts(out_dir)
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
         except GenerationError:
             raise
         except Exception as e:

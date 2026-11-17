@@ -113,9 +113,16 @@ with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
         intensity = gr.Dropdown(
             list(BPM_MAP), label="4. Combat Intensity",
             info="How fast is the action?", scale=1)
-    lore = gr.Textbox(
-        label="ADVANCED: Custom Scene / Boss Lore (optional)",
-        placeholder="A giant clockwork automaton covered in rust, weeping oil as it attacks.")
+    with gr.Row():
+        lore = gr.Textbox(
+            label="ADVANCED: Custom Scene / Boss Lore (optional)",
+            placeholder="A giant clockwork automaton covered in rust, weeping oil as it attacks.",
+            scale=3)
+        duration_slider = gr.Slider(
+            minimum=15, maximum=120, value=45, step=5,
+            label="Duration (seconds)",
+            info="Clip length (25 tokens/s). 30-45s is fastest (~2-3 min); 80s takes ~6 min.",
+            scale=1)
 
     with gr.Accordion("Show Compiled Prompt", open=False):
         preview = gr.Textbox(label="style", lines=4, interactive=False)
@@ -157,7 +164,7 @@ with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
         comp.change(_tip_fn(key), comp, comp)
 
     # --- generate: stub path returns showcase files; real path wires gr.Progress ---
-    def do_generate(scene, mood, style, intensity, lore, progress=gr.Progress()):
+    def do_generate(scene, mood, style, intensity, lore, duration_sec, progress=gr.Progress()):
         require_selections(scene, mood, style, intensity)
         if USE_STUB:   # zero-GPU testing for the UI owner
             progress(1.0, desc="STUB")
@@ -171,22 +178,22 @@ with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
 
         try:
             req = build_request(scene, mood, style, intensity, lore, seed=42)
-            out = studio().generate(req, os.path.join("outputs", req["id"]), on_progress=cb)
+            out = studio().generate(req, os.path.join("outputs", req["id"]), on_progress=cb, duration=duration_sec)
         except GenerationError as e:
             raise gr.Error(str(e))
         except Exception:
             raise gr.Error("Something went wrong. Try a preset instead.")
-        note = "**Done in %s s.**" % out["duration_s"]
+        note = "**Done in %s s (%.1fs track).**" % (out.get("duration_s", duration_sec), out.get("duration_s", duration_sec))
         if out["truncated"]:
             note += " ⚠️ **TRUNCATED** by the token cap (shorter than the plan asked for)."
         return out["flac"], read_text(out["score"]), out["wav"], note
 
     generate_btn.click(do_generate,
-                       [scene, mood, style, intensity, lore],
+                       [scene, mood, style, intensity, lore, duration_slider],
                        [audio, score, wav_file, status])
 
     # --- ghost-vocal fallback: stub-aware, friendly error before any generation ---
-    def do_fallback(scene, mood, style, intensity, lore, progress=gr.Progress()):
+    def do_fallback(scene, mood, style, intensity, lore, duration_sec, progress=gr.Progress()):
         if USE_STUB:
             progress(1.0, desc="STUB")
             w, a = SHOWCASE[0][1], SHOWCASE[0][2]
@@ -207,7 +214,7 @@ with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
                 os.path.join(d, "score.abc"), os.path.join(d, "score_ins.abc"))
             req = build_request(scene, mood, style, intensity, lore, seed=42)
             req["abc"] = read_text(edited)          # official path: supply edited score
-            out = studio().generate(req, d + "_ins", on_progress=cb)
+            out = studio().generate(req, d + "_ins", on_progress=cb, duration=duration_sec)
         except GenerationError as e:
             raise gr.Error(str(e))
         except Exception:
@@ -216,7 +223,7 @@ with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
                 "**Re-rendered instrumental** (Vocal moved to Ins). Listen once more.")
 
     fallback_btn.click(do_fallback,
-                       [scene, mood, style, intensity, lore],
+                       [scene, mood, style, intensity, lore, duration_slider],
                        [audio, score, wav_file, status])
 
     # --- showcase presets: instant autoplay, score loaded too ---
@@ -227,7 +234,8 @@ with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
 
 
 demo.queue()
-if _LAUNCH_TAKES_CSS:
-    demo.launch(server_name="127.0.0.1", server_port=7860, inbrowser=True, css=CSS)
-else:
-    demo.launch(server_name="127.0.0.1", server_port=7860, inbrowser=True)
+if __name__ == "__main__":
+    if _LAUNCH_TAKES_CSS:
+        demo.launch(server_name="127.0.0.1", server_port=7860, inbrowser=True, css=CSS)
+    else:
+        demo.launch(server_name="127.0.0.1", server_port=7860, inbrowser=True)
