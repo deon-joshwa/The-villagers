@@ -42,7 +42,7 @@ def read_text(path, default=SAMPLE_ABC):
 
 
 with gr.Blocks(css=CSS, title="OST.io") as demo:
-    gr.Markdown("# OST.io: Game Audio Synthesizer (Local)")
+    gr.Markdown("# OST.io — Game words in. Game music out.")
     with gr.Row():
         scene = gr.Dropdown(list(SCENE_MAP), label="1. Scene Context")
         mood = gr.Dropdown(list(MOOD_MAP), label="2. Mood / Atmosphere")
