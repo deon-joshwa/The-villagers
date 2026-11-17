@@ -5,6 +5,7 @@ Owner: P3. All API facts verified against API_NOTES.md (official docs).
 
 import json
 import os
+import re
 
 import soundfile as sf
 
@@ -21,12 +22,35 @@ class YueStudio:
     @property
     def pipe(self):
         if self._pipe is None:
-            from yue2 import YuE2Pipeline
-            # low_vram: keeps only active AR/NAR modules on GPU -- the 8 GB path.
-            # cache_dir keeps weights project-local (supported natively).
-            self._pipe = YuE2Pipeline.from_pretrained(
-                "m-a-p/YuE2-3B", device="cuda", low_vram=True,
-                cache_dir=self.cache_dir)
+            try:
+                from yue2 import YuE2Pipeline
+            except ImportError as e:
+                raise GenerationError(
+                    "YuE2 package is not installed. Please run setup.bat inside your Python 3.12 venv, "
+                    "or set YUE_STUB=1 for zero-GPU testing."
+                ) from e
+
+            try:
+                # low_vram: keeps only active AR/NAR modules on GPU -- the 8 GB path.
+                # cache_dir keeps weights project-local (supported natively).
+                self._pipe = YuE2Pipeline.from_pretrained(
+                    "m-a-p/YuE2-3B", device="cuda", low_vram=True,
+                    cache_dir=self.cache_dir)
+            except Exception as e:
+                err_str = str(e).lower()
+                if "out of memory" in err_str:
+                    raise GenerationError(
+                        "GPU out of memory while loading YuE2 model. Ensure other GPU processes are closed."
+                    ) from e
+                elif "cuda" in err_str and ("not available" in err_str or "no kernel" in err_str):
+                    raise GenerationError(
+                        "CUDA is not available or compatible GPU not detected. "
+                        "YuE2 requires an NVIDIA GPU (or set YUE_STUB=1)."
+                    ) from e
+                else:
+                    raise GenerationError(
+                        "Failed to load YuE2 model from '%s': %s" % (self.cache_dir, e)
+                    ) from e
         return self._pipe
 
     def generate(self, request, out_dir, on_progress=None):
@@ -36,27 +60,50 @@ class YueStudio:
         try:
             song = self.pipe(**request, on_progress=on_progress)
             song.save_artifacts(out_dir)
+        except GenerationError:
+            raise
         except Exception as e:
-            raise GenerationError(
-                "YuE2 generation failed: %s -- likely OOM on 8 GB. "
-                "Try a preset instead." % e) from e
+            err_str = str(e).lower()
+            if "out of memory" in err_str:
+                raise GenerationError(
+                    "YuE2 ran out of GPU memory (CUDA OOM on 8 GB). "
+                    "Try a preset, lower intensity, or shorter scene prompt."
+                ) from e
+            elif "cuda" in err_str and ("not available" in err_str or "device" in err_str):
+                raise GenerationError(
+                    "CUDA device error during generation: %s. "
+                    "Check NVIDIA driver or set YUE_STUB=1." % e
+                ) from e
+            else:
+                raise GenerationError(
+                    "YuE2 generation failed: %s. Try a preset instead." % e
+                ) from e
 
         flac = os.path.join(out_dir, "audio.flac")
         score = os.path.join(out_dir, "score.abc")
-        if not (os.path.exists(flac) and os.path.exists(score)):
-            raise GenerationError("Generation finished but artifacts are missing.")
+        if not os.path.exists(flac):
+            raise GenerationError("Generation completed but audio.flac is missing from %s." % out_dir)
+        if not os.path.exists(score):
+            raise GenerationError("Generation completed but score.abc is missing from %s." % out_dir)
 
         # result.json carries the truncated flag: audio can be playable even
         # when the model hit the token limit -- surface this in the UI.
         truncated = False
         result_path = os.path.join(out_dir, "result.json")
         if os.path.exists(result_path):
-            with open(result_path, "r", encoding="utf-8") as f:
-                truncated = bool(json.load(f).get("truncated"))
+            try:
+                with open(result_path, "r", encoding="utf-8") as f:
+                    truncated = bool(json.load(f).get("truncated"))
+            except Exception:
+                truncated = False
 
         wav = os.path.join(out_dir, "audio.wav")
-        data, sr = sf.read(flac)
-        sf.write(wav, data, sr, subtype="PCM_16")
+        try:
+            data, sr = sf.read(flac)
+            sf.write(wav, data, sr, subtype="PCM_16")
+        except Exception as e:
+            raise GenerationError("Audio conversion (FLAC -> PCM_16 WAV) failed: %s" % e) from e
+
         return {
             "wav": wav,
             "flac": flac,
@@ -74,19 +121,34 @@ class YueStudio:
         Ins voice, the agent should append the Vocal body into that section
         instead -- validate against a real score.abc at the Hour-2 smoke test.
         """
-        with open(score_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+        if not os.path.exists(score_path):
+            raise GenerationError("Score file not found at '%s' -- generate a track first." % score_path)
+
+        try:
+            with open(score_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        except OSError as e:
+            raise GenerationError("Could not read score file at '%s': %s" % (score_path, e)) from e
+
         out, merged = [], False
         for line in lines:
-            if line.strip().upper().startswith("V:VOCAL"):
-                out.append(line.replace("Vocal", "Ins", 1))
+            if re.match(r"^\s*V:\s*Vocal\b", line, re.IGNORECASE):
+                out.append(re.sub(r"(?i)\bvocal\b", "Ins", line, count=1))
                 merged = True
             else:
                 out.append(line)
+
         if not merged:
-            raise GenerationError("No V:Vocal voice found in score -- nothing to move.")
-        with open(out_path, "w", encoding="utf-8") as f:
-            f.writelines(out)
+            raise GenerationError(
+                "No 'V:Vocal' voice found in score ('%s') -- nothing to move." % score_path
+            )
+
+        try:
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.writelines(out)
+        except OSError as e:
+            raise GenerationError("Could not write edited score to '%s': %s" % (out_path, e)) from e
+
         return out_path
 
     def read_score(self, score_path):
