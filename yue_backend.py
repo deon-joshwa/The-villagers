@@ -15,9 +15,10 @@ class GenerationError(RuntimeError):
 
 
 class YueStudio:
-    def __init__(self, cache_dir="hf_cache"):
+    def __init__(self, cache_dir="hf_cache", quantization="fp8"):
         self._pipe = None
         self.cache_dir = cache_dir
+        self.quantization = quantization
 
     @property
     def pipe(self):
@@ -33,9 +34,16 @@ class YueStudio:
             try:
                 # low_vram: keeps only active AR/NAR modules on GPU -- the 8 GB path.
                 # cache_dir keeps weights project-local (supported natively).
+                # quantization="fp8": FP8 AR linear layers for 8 GB GPUs (RTX 40/50 series).
+                load_kwargs = {
+                    "device": "cuda",
+                    "low_vram": True,
+                    "cache_dir": self.cache_dir,
+                }
+                if self.quantization:
+                    load_kwargs["quantization"] = self.quantization
                 self._pipe = YuE2Pipeline.from_pretrained(
-                    "m-a-p/YuE2-3B", device="cuda", low_vram=True,
-                    cache_dir=self.cache_dir)
+                    "m-a-p/YuE2-3B", **load_kwargs)
             except Exception as e:
                 err_str = str(e).lower()
                 if "out of memory" in err_str:
