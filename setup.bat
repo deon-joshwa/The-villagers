@@ -4,7 +4,7 @@ python3.12 -m venv .venv 2>nul || py -3.12 -m venv .venv 2>nul || python -m venv
 call .venv\Scripts\activate
 python -m pip install --upgrade pip
 python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cu128
-git clone https://github.com/multimodal-art-projection/YuE.git yue2-repo
+if not exist yue2-repo git clone https://github.com/multimodal-art-projection/YuE.git yue2-repo
 python -m pip install .\yue2-repo
 python -m pip install gradio soundfile
 yue2 doctor
