@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Model weights + generation artifacts (large, reproducible)
+hf_cache/
+outputs/
+yue2-repo/
+
+# Keep placeholder showcase assets out of the way once real renders land
+# (real showcase WAVs/ABCs SHOULD be committed -- seeds are pinned)

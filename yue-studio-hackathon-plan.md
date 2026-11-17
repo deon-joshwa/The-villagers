@@ -5,9 +5,11 @@
 > **Build mode: 100% AI-driven.** Five people orchestrate AI coding agents; no manual coding.
 > Humans write specs and prompts, run commands, paste errors back to agents, review diffs, and verify.
 > Target: 8-hour hackathon MVP, then a production roadmap (section 11).
-> YuE2 request schema and prompting rules verified against the official repo
-> (`multimodal-art-projection/YuE`, `main` branch, Sept/Oct 2026) and `docs/hardware.md`.
-> This document (v2) is the single source of truth and supersedes all earlier snippets.
+> This document (v2.1, Nov 17 2026) is the single source of truth. It is refreshed against the
+> official `docs/generation.md`: there is NO duration parameter (length follows the symbolic
+> plan / token cap); adds progress callbacks, truncation reporting, `cache_dir`, and the
+> official Vocal->Ins instrumental fallback. YuE2 request schema and prompting rules verified
+> against `multimodal-art-projection/YuE` `main` (latest release: yue2-v0.1.6; skill yue2-music-v1.2.0).
 
 ---
 
@@ -41,20 +43,23 @@ melody-and-chord plan under the hood.
 | FR1 | Four dropdowns: **Scene Context**, **Mood / Atmosphere**, **Music Style & Instruments**, **Combat Intensity** |
 | FR2 | Optional **Custom Scene / Boss Lore** textarea, appended to the compiled prompt |
 | FR3 | **"Preview Compiled YuE Prompt"** -- shows the exact `style` string the dropdowns produce (free, instant, no GPU) |
-| FR4 | **"Generate Track"** -- runs YuE 2 locally, produces a 30-60 s stereo clip + an **ABC score (melody/chord plan)** |
+| FR4 | **"Generate Track"** -- runs YuE 2 locally, produces a stereo clip + an **ABC score (melody/chord plan)** |
 | FR5 | **ABC score viewer** in the UI (`gr.Code`) -- the "white-box" feature; judges see the composition the dropdowns produced |
 | FR6 | Built-in playback with waveform (via `gr.Audio`), autoplay on showcase presets |
 | FR7 | **Download .WAV for Unity** -- converts the artifact FLAC to 16-bit PCM WAV |
 | FR8 | **"Load Preset Showcase"** -- instant playback of 3 pre-generated seed-pinned tracks (no GPU wait during the pitch) |
-| FR9 | Clip-length control (30 / 45 / 60 s) in the UI |
+| FR9 | **Honest length reporting**: clip length follows the symbolic plan / token cap (YuE2 has NO duration parameter); the UI shows actual duration and the `truncated` flag after each run |
 | FR10 | Friendly failure: OOM or crash shows a clean message, never a traceback |
+| FR11 | **Real progress bar** during generation, wired to YuE2's `on_progress` callbacks (NAR steps, VAE tiles) |
+| FR12 | **Ghost-vocal fallback**: if a clip fails the listening check, one button edits `score.abc` (move `Vocal` notes into the `Ins` part) and re-renders -- the official instrumental workflow |
 
 ### 2.2 Non-functional requirements
 
 - 100% local inference; no accounts, no API keys, no cloud.
 - Runs on **Windows** with an **8 GB VRAM** NVIDIA GPU via `low_vram=True` (proven config:
-  RTX 5060 Laptop 8 GB, BF16/FP8 AR, ~6,000-token cap -- see `docs/hardware.md` in the YuE repo).
-- Model weights land in a **project-local cache** (`HF_HOME=%~dp0hf_cache`).
+  RTX 5060 Laptop 8 GB, BF16/FP8 AR, ~6,000-token cap -- see `docs/hardware.md`; the dev branch
+  is reported working on 8-9 GB, even 6 GB, so low-VRAM support keeps improving).
+- Model weights land in a **project-local cache** via `from_pretrained(..., cache_dir="hf_cache")`.
 - Reproducible showcase: pinned integer seeds per preset.
 - **Build constraint: no manual coding.** All code is produced by AI agents from written specs
   (section 5); humans never type application code.
@@ -63,7 +68,7 @@ melody-and-chord plan under the hood.
 
 - Windows 10/11, NVIDIA GPU >= 8 GB VRAM (24 GB = official spec; 8 GB works with `low_vram=True`).
 - Python **3.12**, Git, ~10 GB free disk (model weights + venv).
-- PyTorch **2.10.0 + cu128** (the version YuE 2 pins on Windows), then `pip install .` from the cloned YuE repo.
+- PyTorch **2.10.0 + cu128** (the version YuE 2 pins on Windows), then `pip install .` from the cloned YuE repo (yue2-v0.1.6).
 - Validate with `yue2 doctor`.
 - Host RAM matters in `low_vram` mode (weights stream between CPU and GPU) -- 32 GB comfortable, 16 GB workable.
 
@@ -86,38 +91,42 @@ Repo layout (all files authored by AI agents from `contracts.md` + the specs in 
 yue-studio/
 |-- app.py               # Gradio UI (all of it)
 |-- prompt_compiler.py   # dropdowns -> YuE2 request JSON
-|-- yue_backend.py       # pipeline loader + generate() + FLAC->WAV
+|-- yue_backend.py       # pipeline loader + generate() + FLAC->WAV + fallbacks
 |-- make_presets.py      # background script: renders the 3 showcase tracks
 |-- contracts.md         # interface contracts -- every agent codes against this
 |-- API_NOTES.md         # pasted official YuE2 docs -- prevents agent hallucination
 |-- showcase/            # pre-generated clips + scores (made before the pitch)
+|-- hf_cache/            # project-local model weights (cache_dir)
 |-- setup.bat            # venv + torch cu128 + pip install .
-|-- run_app.bat          # HF_HOME + activates venv + launches 127.0.0.1:7860
+|-- run_app.bat          # activates venv + launches 127.0.0.1:7860
 `-- requirements.txt     # gradio, soundfile (torch/yue2 installed by setup.bat)
 ```
 
 Data flow:
 
 ```
-dropdowns + lore + clip length -> build_request() -> {id, style, lyrics, cot, seed, ...}
+dropdowns + lore -> build_request() -> {id, style, lyrics, cot, seed}
   [Preview Compiled Prompt] : pure string join (no GPU, instant)
-  [Generate Track]          : YuE2Pipeline(low_vram=True) -> save_artifacts(dir)
-                              -> audio.flac + score.abc
-                              -> gr.Audio (waveform) + gr.Code (ABC score)
+  [Generate Track]          : YuE2Pipeline(low_vram=True, cache_dir="hf_cache")
+                              on_progress callback -> live Gradio progress bar
+                              -> save_artifacts(dir) -> audio.flac + score.abc + result.json
+                              -> gr.Audio + gr.Code + duration/truncated status
   [Download .WAV for Unity] : soundfile FLAC -> WAV (PCM_16)
+  [Ghost-vocal fallback]    : edit score.abc (Vocal -> Ins) -> re-render
 ```
 
 ---
 
-## 4. Implementation (v2 -- all fixes baked in)
+## 4. Implementation (v2.1 -- matches official docs/generation.md)
 
 ### 4.1 `prompt_compiler.py`
 
 Key rules baked in:
-- YuE2 request keys are **`id, style, lyrics, cot, seed`** (there is no `genre_prompt` -- that was YuE 1).
+- YuE2 request keys are **`id, style, lyrics, cot, seed`** (+ optional `cfg_scale` -- leave default).
+- There is **NO duration/clip-length parameter** (v2.1 finding): length follows the symbolic plan
+  and the low-VRAM token cap. Do not pass a length kwarg -- agents must not invent one.
 - Style string is **language-first**, then genre/instruments -> mood -> scene -> tempo -> lore -> instrumental tags last.
-- `lyrics` is **empty** (NOT `[Intro]\n[Verse]...` -- that is a *vocal* song scaffold and risks ghost vocals).
-- BPM lives inside the style string (see `examples/song.json`: "..., 88 BPM").
+- `lyrics` is **empty** (officially documented for instrumental; NOT `[Intro]\n[Verse]...` -- that is a *vocal* song scaffold).
 
 ```python
 """Translates game-design dropdowns into a YuE 2 request payload."""
@@ -154,8 +163,6 @@ BPM_MAP = {
     "Frenetic / Enraged (160+ BPM)":          "170 BPM",
 }
 
-CLIP_LENGTHS = {"30 s": 30, "45 s": 45, "60 s": 60}
-
 def compile_style(scene, mood, style, intensity, custom_lore=""):
     parts = [
         "English",               # YuE2 wants the language tag FIRST
@@ -166,65 +173,94 @@ def compile_style(scene, mood, style, intensity, custom_lore=""):
     ]
     if custom_lore.strip():
         parts.append("scene inspiration: " + custom_lore.strip())
-    parts.append("instrumental, no vocals")   # YuE2 has no instrumental mode -- enforce in text
+    parts.append("instrumental, no vocals")   # no instrumental mode -- enforce in text
     return ", ".join(parts)
 
-def build_request(scene, mood, style, intensity, custom_lore="",
-                  clip_seconds=45, seed=None, track_id=None):
-    request = {
+def build_request(scene, mood, style, intensity, custom_lore="", seed=None, track_id=None):
+    # NOTE: no length kwarg -- YuE2 has no duration parameter (docs/generation.md).
+    # Length = whatever the symbolic plan produces, capped by the low-VRAM token cap.
+    return {
         "id": track_id or (scene.split(" ")[0].lower() + "_" + mood.split(" ")[0].lower()),
         "style": compile_style(scene, mood, style, intensity, custom_lore),
-        "lyrics": "",            # empty => instrumental; "[Instrumental]" also works
+        "lyrics": "",            # empty => instrumental (officially documented)
         "cot": "full",           # symbolic planning => editable ABC score (our UI feature)
         "seed": int(seed) if seed is not None else 831001,
     }
-    # HOUR-1 TODO (P1): replace "max_seconds" with the REAL duration / token-cap
-    # parameter name from docs/generation.md (the 8 GB reference run used a
-    # 6,000-token cap). Delete this line if YuE2 takes no such kwarg.
-    request["max_seconds"] = int(clip_seconds)
-    return request
 ```
 
-### 4.2 `yue_backend.py`
+### 4.2 `yue_backend.py` (progress + truncation + fallback)
 
 ```python
-"""Loads YuE2 once, generates clips, converts FLAC -> WAV."""
-import os
+"""Loads YuE2 once, generates clips, converts FLAC -> WAV, handles fallbacks."""
+import os, json
 import soundfile as sf
 
 class GenerationError(RuntimeError):
     """Raised when YuE2 generation fails or artifacts are incomplete."""
 
 class YueStudio:
-    def __init__(self):
+    def __init__(self, cache_dir="hf_cache"):
         self._pipe = None
+        self.cache_dir = cache_dir
 
     @property
     def pipe(self):
         if self._pipe is None:
             from yue2 import YuE2Pipeline
-            # low_vram: keeps only active AR/NAR modules on GPU -- the 8 GB path
+            # low_vram: keeps only active AR/NAR modules on GPU -- the 8 GB path.
+            # cache_dir keeps weights project-local (from_pretrained supports it natively).
             self._pipe = YuE2Pipeline.from_pretrained(
-                "m-a-p/YuE2-3B", device="cuda", low_vram=True)
+                "m-a-p/YuE2-3B", device="cuda", low_vram=True,
+                cache_dir=self.cache_dir)
         return self._pipe
 
-    def generate(self, request, out_dir):
+    def generate(self, request, out_dir, on_progress=None):
+        # on_progress: YuE2 native callback(stage, completed, total)
+        # for stages "nar" and "vae" -- wire it straight into gr.Progress.
         os.makedirs(out_dir, exist_ok=True)
         try:
-            song = self.pipe(**request)   # kwargs must match API_NOTES.md exactly
+            song = self.pipe(**request, on_progress=on_progress)
             song.save_artifacts(out_dir)
         except Exception as e:
             raise GenerationError(
                 "YuE2 generation failed: %s -- likely OOM on 8 GB. "
-                "Try a shorter clip or a preset." % e) from e
+                "Try a preset instead." % e) from e
         flac = os.path.join(out_dir, "audio.flac")
-        wav = os.path.join(out_dir, "audio.wav")
         score = os.path.join(out_dir, "score.abc")
         if not (os.path.exists(flac) and os.path.exists(score)):
             raise GenerationError("Generation finished but artifacts are missing.")
+        # result.json carries the truncated flag: audio can be playable even
+        # when the model hit the token limit -- surface this in the UI.
+        truncated = False
+        result_path = os.path.join(out_dir, "result.json")
+        if os.path.exists(result_path):
+            with open(result_path, "r", encoding="utf-8") as f:
+                truncated = bool(json.load(f).get("truncated"))
+        wav = os.path.join(out_dir, "audio.wav")
         data, sr = sf.read(flac)
         sf.write(wav, data, sr, subtype="PCM_16")
-        return {"wav": wav, "flac": flac, "score": score}
+        return {"wav": wav, "flac": flac, "score": score, "truncated": truncated,
+                "duration_s": round(len(data) / sr, 1)}
+
+    def fallback_instrumental(self, score_path, out_path):
+        """Official instrumental workflow (yue2-music skill): move Vocal notes
+        into the Ins part, then re-render with the edited ABC. Simple version:
+        rename the Vocal voice header to Ins and merge its body. P1 must run
+        this once on a real score.abc at Hour 2 to verify the merge logic."""
+        with open(score_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        out, merged = [], False
+        for line in lines:
+            if line.strip().upper().startswith("V:VOCAL"):
+                out.append(line.replace("Vocal", "Ins", 1))
+                merged = True
+            else:
+                out.append(line)
+        if not merged:
+            raise GenerationError("No V:Vocal voice found in score -- nothing to move.")
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.writelines(out)
+        return out_path
 
     def read_score(self, score_path):
         try:
@@ -234,13 +270,18 @@ class YueStudio:
             return "(score not available yet -- generate a track first)"
 ```
 
-### 4.3 `app.py` (queue + error handling + stub mode + clip length + autoplay)
+> **Note (v2.1):** the naive merge above is a starting point -- if the score already has an
+> `Ins` voice with notes, the agent should append the Vocal body into that section instead.
+> Validate against a real `score.abc` at Hour 2; the official skill release (yue2-music-v1.2.0)
+> is the reference implementation.
+
+### 4.3 `app.py` (progress bar, truncation status, fallback button)
 
 ```python
 import os
 import gradio as gr
 from prompt_compiler import (SCENE_MAP, MOOD_MAP, STYLE_MAP, BPM_MAP,
-                             CLIP_LENGTHS, compile_style, build_request)
+                             compile_style, build_request)
 from yue_backend import YueStudio, GenerationError
 
 USE_STUB = os.environ.get("YUE_STUB") == "1"   # UI testing with zero GPU
@@ -269,7 +310,6 @@ with gr.Blocks(css=CSS, title="YuE-Studio") as demo:
     with gr.Row():
         style     = gr.Dropdown(list(STYLE_MAP), label="3. Music Style & Instruments")
         intensity = gr.Dropdown(list(BPM_MAP),   label="4. Combat Intensity")
-    clip_len = gr.Dropdown(list(CLIP_LENGTHS), value="45 s", label="5. Clip Length")
     lore = gr.Textbox(
         label="ADVANCED: Custom Scene / Boss Lore (optional)",
         placeholder="A giant clockwork automaton covered in rust, weeping oil as it attacks.")
@@ -279,12 +319,14 @@ with gr.Blocks(css=CSS, title="YuE-Studio") as demo:
         preview_btn = gr.Button("Preview Compiled YuE Prompt")
 
     generate_btn = gr.Button("GENERATE TRACK (YuE 2)", variant="primary")
-    gr.Markdown("Generation on an 8 GB GPU takes several minutes -- showcase presets below play instantly.")
+    status = gr.Markdown("Ready.")   # duration + truncated flag land here
 
     with gr.Row():
         audio = gr.Audio(label="Playback", type="filepath")
         score = gr.Code(label="Generated ABC Score (melody & chords)", language="markdown")
-    wav_file = gr.File(label="Download .WAV for Unity")
+    with gr.Row():
+        wav_file = gr.File(label="Download .WAV for Unity")
+        fallback_btn = gr.Button("Fix Ghost Vocals (move Vocal -> Ins, re-render)")
 
     gr.Markdown("## Preset Showcase")
     with gr.Row():
@@ -295,23 +337,42 @@ with gr.Blocks(css=CSS, title="YuE-Studio") as demo:
         lambda s, m, st, i, l: compile_style(s, m, st, i, l),
         [scene, mood, style, intensity, lore], preview)
 
-    def do_generate(scene, mood, style, intensity, clip_len, lore):
+    def do_generate(scene, mood, style, intensity, lore, progress=gr.Progress()):
         if USE_STUB:   # zero-GPU testing for the UI owner
             w, a = SHOWCASE[0][1], SHOWCASE[0][2]
-            return w, open(a, encoding="utf-8").read() if os.path.exists(a) else SAMPLE_ABC, w
+            return w, open(a, encoding="utf-8").read(), w, "Stub mode: fake track loaded."
+        def cb(stage, done, total):     # YuE2 native stages: "nar", "vae"
+            progress(done / max(total, 1), desc=stage.upper())
         try:
-            req = build_request(scene, mood, style, intensity, lore,
-                                clip_seconds=CLIP_LENGTHS[clip_len], seed=42)
-            out = studio().generate(req, "outputs/" + req["id"])
-            return out["flac"], studio().read_score(out["score"]), out["wav"]
+            req = build_request(scene, mood, style, intensity, lore, seed=42)
+            out = studio().generate(req, "outputs/" + req["id"], on_progress=cb)
         except GenerationError as e:
             raise gr.Error(str(e))
         except Exception:
-            raise gr.Error("Something went wrong. Try a shorter clip or a preset.")
+            raise gr.Error("Something went wrong. Try a preset instead.")
+        note = "Done in %s s" % out["duration_s"]
+        if out["truncated"]:
+            note += " -- TRUNCATED by token cap (shorter than the plan asked for)"
+        return out["flac"], studio().read_score(out["score"]), out["wav"], note
 
     generate_btn.click(do_generate,
-                       [scene, mood, style, intensity, clip_len, lore],
-                       [audio, score, wav_file])
+                       [scene, mood, style, intensity, lore],
+                       [audio, score, wav_file, status])
+
+    def do_fallback(scene, mood, style, intensity, lore):
+        # move Vocal->Ins in the last generated score, re-render with abc=...
+        last = sorted(os.listdir("outputs"), key=lambda d: os.path.getmtime(os.path.join("outputs", d)))[-1]
+        d = os.path.join("outputs", last)
+        edited = studio().fallback_instrumental(
+            os.path.join(d, "score.abc"), os.path.join(d, "score_ins.abc"))
+        req = build_request(scene, mood, style, intensity, lore, seed=42)
+        req["abc"] = open(edited, encoding="utf-8").read()   # official path: cot stays "full"
+        out = studio().generate(req, d + "_ins", on_progress=lambda s, c, t: None)
+        return out["flac"], studio().read_score(out["score"]), out["wav"], "Re-rendered instrumental (Vocal moved to Ins)."
+
+    fallback_btn.click(do_fallback,
+                       [scene, mood, style, intensity, lore],
+                       [audio, score, wav_file, status])
 
     for btn, (_, path, abc) in zip(preset_btns, SHOWCASE):
         btn.click(lambda p, a: (p, open(a, encoding="utf-8").read()), [path, abc],
@@ -340,7 +401,7 @@ studio = YueStudio()
 for scene, mood, style, intensity, seed in PRESETS:
     req = build_request(scene, mood, style, intensity, seed=seed, track_id="showcase_%d" % seed)
     out = studio.generate(req, "showcase")
-    print("done:", out["wav"], flush=True)
+    print("done:", out["wav"], "truncated:", out["truncated"], flush=True)
 ```
 
 ### 4.5 `setup.bat` / `run_app.bat`
@@ -380,10 +441,12 @@ agentic coder). **Humans never type application code.** Humans do five things:
 5. **Merge** -- commit working files to the shared repo; never commit unverified code.
 
 **Hard rules (prevent AI failure modes):**
-- `API_NOTES.md` contains the **pasted official YuE2 README quick-start + `docs/hardware.md`
-  excerpts**. Agents must not invent YuE2 parameters -- any kwarg not in `API_NOTES.md` is
-  rejected in review. The `max_seconds` kwarg in section 4.1 is the ONLY tolerated unknown,
-  and P1 must resolve it against `docs/generation.md` by Hour 1.
+- `API_NOTES.md` contains the **pasted official YuE2 README quick-start + `docs/generation.md`
+  + `docs/hardware.md` excerpts**. Agents must not invent YuE2 parameters -- any kwarg not in
+  `API_NOTES.md` is rejected in review. Known-confirmed facts: request keys are
+  `id, style, lyrics, cot, seed` (+ `abc`, `cfg_scale`); **there is no duration parameter**;
+  `from_pretrained` accepts `low_vram`, `cache_dir`, `local_files_only`, `revision`, `vae`;
+  `pipe(..., on_progress=callback)` reports stages `"nar"` and `"vae"`.
 - One file, one owner: no two people's agents edit the same file (merge conflicts are the
   #1 time-killer in parallel AI builds).
 - Every agent prompt includes: the contract, the file spec, and "output the complete file,
@@ -397,9 +460,11 @@ agentic coder). **Humans never type application code.** Humans do five things:
 
 **Kickoff (P1, Hour 0):**
 > Create `contracts.md` in the repo root containing exactly these interface definitions:
-> build_request(scene, mood, style, intensity, custom_lore, clip_seconds, seed, track_id)
-> -> {"id": str, "style": str, "lyrics": "", "cot": "full", "seed": int, "max_seconds": int};
-> generate(request, out_dir) -> {"wav": path, "flac": path, "score": path};
+> build_request(scene, mood, style, intensity, custom_lore, seed, track_id)
+> -> {"id": str, "style": str, "lyrics": "", "cot": "full", "seed": int};
+> generate(request, out_dir, on_progress=None)
+> -> {"wav", "flac", "score", "truncated", "duration_s"};
+> fallback_instrumental(score_path, out_path) -> path;
 > showcase files: showcase/showcase_<seed>.wav and .abc for seeds 831001-831003.
 
 **Any workstream (P2/P3/P4):**
@@ -414,8 +479,9 @@ agentic coder). **Humans never type application code.** Humans do five things:
 
 **Docs harvest (P1, Hour 0.5):**
 > From the following YuE2 documentation text, extract: the exact pipeline constructor kwargs,
-> the request JSON fields, and any parameter controlling clip length / token cap / low VRAM.
-> Write them to API_NOTES.md as a table with source line quotes.
+> the request JSON fields, the on_progress callback signature, the result.json / truncated
+> flag semantics, and the instrumental (Vocal->Ins) workflow. Write them to API_NOTES.md as
+> a table with source line quotes.
 > <paste README quick-start + docs/generation.md + docs/hardware.md text>
 
 ---
@@ -426,10 +492,10 @@ agentic coder). **Humans never type application code.** Humans do five things:
 
 | Person | Role | Drives AI to produce / do | Verify duty |
 |--------|------|---------------------------|-------------|
-| **P1** | Model Wrangler | `setup.bat`, `run_app.bat`, `API_NOTES.md` harvest, smoke-test script, `make_presets.py` | **Runs everything GPU**: `yue2 doctor`, smoke test, preset renders, audio QC (ghost vocals), resolves the `max_seconds` TODO |
+| **P1** | Model Wrangler | `setup.bat`, `run_app.bat`, `API_NOTES.md` harvest, smoke-test script, `make_presets.py` | **Runs everything GPU**: `yue2 doctor`, smoke test, preset renders, audio QC (ghost vocals), validates the Vocal->Ins fallback on a real score |
 | **P2** | Spec & Compiler owner | `prompt_compiler.py` + unit tests, `contracts.md`, README, in-app microcopy | Runs the unit tests the agent writes; reviews every map string for music-term sanity |
-| **P3** | Integration owner | `yue_backend.py`, queue/progress/error wiring, `outputs/` management | Full round-trip: compiler -> backend -> artifacts on disk; rehearsal support on failure paths |
-| **P4** | UI owner | `app.py` (stub-first), theme, showcase buttons | Launches with `YUE_STUB=1` and clicks EVERY path; screenshot-diffs against the mockup |
+| **P3** | Integration owner | `yue_backend.py`, progress/queue/error wiring, `outputs/` management | Full round-trip: compiler -> backend -> artifacts on disk; truncated flag surfaced correctly |
+| **P4** | UI owner | `app.py` (stub-first), theme, showcase buttons, fallback button | Launches with `YUE_STUB=1` and clicks EVERY path; screenshot-diffs against the mockup |
 | **P5** | Pitch & Demo owner | Slides, mock boss-fight screen, demo runbook, backup recordings -- all agent-generated assets | Rehearsals; times the 3-minute pitch; owns Q&A (license, hardware, why-YuE2) |
 
 ### 7.2 Ownership map (one file, one owner)
@@ -448,9 +514,9 @@ Shared (no writes): repo config, .gitignore (P2 sets up at kickoff)
 | Hours | P1 Model | P2 Compiler | P3 Backend | P4 UI | P5 Pitch |
 |-------|----------|-------------|------------|-------|----------|
 | **0-1** | Agent writes setup.bat -> run it -> `yue2 doctor` -> harvest `API_NOTES.md` | Agent writes `contracts.md` + `prompt_compiler.py` + tests | Agent writes `yue_backend.py` skeleton | Agent writes `app.py` against stub | Agent makes ComfyUI "before" slide |
-| **1-2** | **SMOKE TEST gate**: no vocals, <=60 s, `score.abc` saved; resolve `max_seconds` | Run unit tests via agent; fix diffs | Wire real kwargs from `API_NOTES.md` | Click every stub path; polish theme | Agent makes mock boss screen |
-| **2-4** | Render 3 presets in background; QC audio | Lore edge cases; tooltips | FLAC->WAV + `read_score` + progress queue | Real backend behind stub flag; full click-through | Pitch script v1; Q&A cards |
-| **4-6** | Tune token cap; regenerate offenders | README final | Integration fixes | Score viewer + WAV button polish | **Rehearsal #1** (with team) |
+| **1-2** | **SMOKE TEST gate**: no vocals, capture `truncated` + duration, validate Vocal->Ins merge on a real score | Run unit tests via agent; fix diffs | Wire on_progress + result.json reading | Click every stub path; polish theme | Agent makes mock boss screen |
+| **2-4** | Render 3 presets in background; QC audio | Lore edge cases; tooltips | FLAC->WAV + fallback flow + queue | Real backend behind stub flag; full click-through | Pitch script v1; Q&A cards |
+| **4-6** | Regenerate offenders (or run Vocal->Ins fallback) | README final | Integration fixes | Progress bar + status polish | **Rehearsal #1** (with team) |
 | **6-7** | Pin final seeds | Merge README | Friendly errors verified | Final showcase buttons | **Rehearsal #2**, freeze runbook |
 | **7-8** | Standby: live-gen | Bugfix standby | Bugfix standby | Bugfix standby | Final timing; deliver pitch |
 
@@ -474,15 +540,15 @@ Shared (no writes): repo config, .gitignore (P2 sets up at kickoff)
 
 ---
 
-## 8. 8-Hour Execution Checklist (unchanged targets, AI-driven means faster code, same GPU gates)
+## 8. 8-Hour Execution Checklist
 
 | Hours | Task | Exit criteria |
 |-------|------|---------------|
-| **0-1** | Agents write setup/run scripts; P1 runs them; `yue2 doctor`; model download | Doctor passes; weights on disk |
-| **1-2** | **Instrumental smoke test** (empty lyrics, `cot="full"`, `low_vram=True`) | (1) No ghost vocals (2) clip <= 60 s (3) `score.abc` in artifacts. **Gate: fail by hour 2 -> cache-only demo** |
+| **0-1** | Agents write setup/run scripts; P1 runs them; `yue2 doctor`; model download | Doctor passes; weights on disk in `hf_cache/` |
+| **1-2** | **Instrumental smoke test** (empty lyrics, `cot="full"`, `low_vram=True`) | (1) No ghost vocals (2) `score.abc` + `result.json` saved (3) `truncated` + duration surfaced. **Gate: fail by hour 2 -> cache-only demo** |
 | **2-4** | Compiler + backend done; **presets rendering in background** | Unit tests green; 3 preset renders running |
-| **4-6** | UI complete; stub swapped for real backend | Full round-trip works on one preset |
-| **6-7** | Showcase mode + polish | Instant autoplay of 3 presets; live gen optional garnish |
+| **4-6** | UI complete; stub swapped for real backend | Full round-trip works on one preset with live progress bar |
+| **6-7** | Showcase mode + polish | Instant autoplay of 3 presets; fallback button tested once |
 | **7-8** | Pitch prep + buffer | 3-min pitch rehearsed twice, end-to-end |
 
 ---
@@ -492,7 +558,7 @@ Shared (no writes): repo config, .gitignore (P2 sets up at kickoff)
 1. **(0:00-0:40) The before.** Show the *official YuE2 ComfyUI workflow* node graph on the projector.
    "This is state-of-the-art open-source music. This is what an indie game dev faces. Nodes, tokens, VRAM flags, music theory."
 2. **(0:40-1:30) The four clicks.** YuE-Studio on your laptop: Boss Battle -> Menacing -> Dark Orchestral -> High Adrenaline. Type one sentence of boss lore: *"A giant clockwork automaton covered in rust, weeping oil as it attacks."* Hit **Preview Compiled Prompt** -- show the translation happening live.
-3. **(1:30-2:30) The white-box reveal.** Generate (or switch to showcase preset) and open the **ABC score**: "YuE 2 plans the melody and chords as symbols first -- our UI surfaces that plan so the dev can see *what* they are getting. No music theory required."
+3. **(1:30-2:30) The white-box reveal.** Generate (or switch to showcase preset) and open the **ABC score** while the progress bar runs: "YuE 2 plans the melody and chords as symbols first -- our UI surfaces that plan so the dev can see *what* they are getting. No music theory required."
 4. **(2:30-3:00) The close.** Play the track over a mock boss-fight screen (optional). "100% local, 8 GB GPU, and the music is yours to ship -- individual devs sell games with YuE 2 music royalty-free. YuE-Studio: compose in game design, not in acoustic tokens."
 
 **Demo hygiene:** cache carries the moment; live generation is something you *kick off and check back on*, never the load-bearing part of the pitch.
@@ -504,9 +570,10 @@ Shared (no writes): repo config, .gitignore (P2 sets up at kickoff)
 | Risk | Likelihood | Mitigation / Fallback |
 |------|-----------|----------------------|
 | **AI agent invents YuE2 API parameters** | High (the #1 AI risk) | `API_NOTES.md` with pasted official docs; review rejects any kwarg not in it; smoke test validates against the real pipeline by Hour 2 |
-| Ghost vocals bleed into "instrumental" output | Medium | Empty lyrics + `instrumental, no vocals` tag; audition all presets Hours 1-2; regenerate with different seeds |
-| OOM / OOM-adjacent stall on 8 GB | Medium | `low_vram=True`, clip-length dropdown, token cap resolved at Hour 1 |
-| Generation too slow for live demo | High (expected) | Cache-first showcase -- preset buttons are the demo; live gen is garnish |
+| Ghost vocals bleed into "instrumental" output | Medium (documented by upstream: "listen to each result") | Empty lyrics + `instrumental, no vocals` tag; QC audition Hours 1-2; **one-click Vocal->Ins fallback re-render (FR12)**; regenerate with different seeds |
+| Clip is longer/shorter than wanted (no duration parameter -- confirmed) | Medium | Accept the length; show duration + `truncated` honestly in the UI; precise length control moves to the roadmap (ABC editing) |
+| OOM / OOM-adjacent stall on 8 GB | Medium | `low_vram=True` + token cap (confirmed in docs); presets render in background; friendly OOM message |
+| Generation too slow for live demo | High (expected) | Cache-first showcase -- preset buttons are the demo; live gen is garnish; progress bar makes waiting presentable |
 | Agent merge conflicts / drift | Medium | One file, one owner (7.2); `contracts.md` is the single interface truth |
 | Agent loops on the same bug | Medium | Switch to minimal-diff prompting with the actual traceback pasted (section 5, rule 4) |
 | Windows install friction | Medium | `setup.bat` run hours ahead; `yue2 doctor` as the objective check |
@@ -516,25 +583,26 @@ Shared (no writes): repo config, .gitignore (P2 sets up at kickoff)
 
 ## 11. Completeness Audit & Production Roadmap
 
-**Verdict: sections 1-10 cover 100% of the hackathon MVP, including the AI-driven build mode.
-A shippable product additionally needs section 11.2 (~2-3 weeks).**
+**Verdict: sections 1-10 cover 100% of the hackathon MVP, including the AI-driven build mode
+and the v2.1 docs refresh. A shippable product additionally needs section 11.2 (~2-3 weeks).**
 
-### 11.1 Fix list -- already folded into the section 4 code (v2)
+### 11.1 Already folded into the section 4 code (v2.1)
 
 `demo.queue()` | `GenerationError` + `gr.Error` friendly failures | `YUE_STUB` mode in code |
-clip-length dropdown (`CLIP_LENGTHS` + `max_seconds` TODO) | `HF_HOME` pinned in `run_app.bat` |
-`autoplay=True` on showcase | FLAC->WAV verified in smoke test
+**clip-length dropdown REMOVED** (no duration parameter exists -- honest duration/truncated reporting instead) | `cache_dir` on `from_pretrained` + `HF_HOME` in run_app.bat | **live progress bar via `on_progress`** | **Vocal->Ins fallback button (official instrumental workflow)** | `autoplay=True` on showcase
 
 ### 11.2 Post-hackathon roadmap (what "final product" means beyond the demo)
 
 | Feature | Why it matters | Effort |
 |---------|---------------|--------|
-| Desktop packaging (PyInstaller, or Tauri/Electron shell around embedded Python) | "double-click a .bat, browser tab opens" is a hackathon answer, not a product | 2-3 days |
-| First-run wizard: model download with progress bar, VRAM detection (auto-selects `low_vram` + token cap), embedded `yue2 doctor` check | A 3B-parameter download happening silently on first use is a support nightmare | 1-2 days |
+| Precise length control via ABC plan editing (bars/tempo in the score) | The only real duration control YuE2 offers -- edit the composition, not the request | 2-3 days |
 | Seamless LOOP export (loop markers / crossfade loop for Unity) | Game audio must loop cleanly; a 60 s one-shot with a hard ending is not game-ready music | 1-2 days |
 | Best-of-N variations + audition picker | YuE2 benchmarks score with best-of-8 -- single-shot output quality varies; devs need choices | 1 day |
-| ABC score edit -> re-render | YuE2 supports score editing natively; "tweak the chords in the plan, re-render" is the unique differentiator | 2-3 days |
+| Full ABC score editor -> re-render | YuE2 supports score editing natively; "tweak the chords in the plan, re-render" is the unique differentiator | 2-3 days |
 | Scene sequencer: multi-scene soundtrack with transitions | Real games need per-scene tracks that hand off smoothly, not isolated clips | 3+ days |
+| Desktop packaging (PyInstaller, or Tauri/Electron shell around embedded Python) | "double-click a .bat, browser tab opens" is a hackathon answer, not a product | 2-3 days |
+| First-run wizard: model download with progress bar, VRAM detection (auto-selects `low_vram` + token cap), embedded `yue2 doctor` check | A 3B-parameter download happening silently on first use is a support nightmare | 1-2 days |
+| YuE2-Turbo / hosted mode (NOIZ vLLM serving, concurrent requests) | Only viable on big GPUs (benchmarked on RTX 5090); a later "studio server" tier, not the local demo path | 3+ days |
 | Settings persistence + project save/load | Nobody should re-pick 4 dropdowns every launch | 1 day |
 | Installer + code signing + auto-update + opt-in crash logging | Distribution basics for any desktop product | ~2 days |
 | Test suite + CI beyond the compiler unit tests | Only P2's tests exist in the hackathon scope | ongoing |
