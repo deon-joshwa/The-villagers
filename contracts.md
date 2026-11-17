@@ -34,10 +34,11 @@ Dropdown label sets (must match `app.py` dropdowns exactly):
 
 ```python
 studio = YueStudio(cache_dir="hf_cache")           # lazy-loads YuE2 on first .generate
-out = studio.generate(request, out_dir, on_progress=None)
+out = studio.generate(request, out_dir, on_progress=None, duration=None)
 ```
 
 - `on_progress`: YuE2 native signature `callback(stage, completed, total)`; stages `"nar"`, `"vae"`.
+- `duration`: Optional clip length in seconds (default: 45.0s, rate: 25 tokens/s; caps token budget).
 - Returns dict:
   - `"wav": str` path to 16-bit PCM WAV (converted from artifact FLAC)
   - `"flac": str` path to artifact FLAC

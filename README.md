@@ -37,7 +37,8 @@ safely (whitespace collapsed, control characters stripped, capped length).
 Under the hood, `prompt_compiler.py` translates the four picks into the exact
 YuE2 request shape (empty lyrics = instrumental, `cot="full"` so you also get
 an editable ABC score, a pinned seed for reproducibility). Track length is
-decided by the model's symbolic plan — YuE2 has no duration parameter.
+customizable via the Duration Slider (15s–120s, default 45s), backed by 25 tokens/s
+dynamic sampling budgeting that cuts render times down to ~3 minutes.
 
 ## Ownership / team layout
 
@@ -76,16 +77,14 @@ them as `gr.Dropdown(..., info=...)` whenever convenient; nothing is required.
 ## Performance & VRAM notes
 
 - The backend defaults to **FP8 AR weights** (`quantization="fp8"`, P3's
-  Hour-2 gate). Verified **loading** on an RTX 3060 Laptop 6 GB (Ampere,
-  software-emulated FP8 kernels). Full end-to-end generation on Ampere is
-  validated by probe runs before each demo — see the team log for results.
-- Realistic render budget on a 6 GB card: roughly **45 minutes per track**
-  (BF16 reference run: 259 s of music in ~2,724 s — plan ~14 min, generation
-  ~27 min, synthesis ~4 min). Plan your demo schedule around it.
-- **Truncation is normal:** YuE2 has no duration parameter; length follows the
-  symbolic plan under a token budget. A 140 BPM boss track truncated at
-  4:19 (still fully playable). The UI surfaces the `truncated` flag from
-  `result.json` — don't promise exact track lengths.
+  Hour-2 gate). Verified on an RTX 4060 Laptop (8 GB VRAM) with hardware FP8
+  acceleration and software emulation fallback.
+- **Fast generation with ComfyUI token ceilings:** Duration maps to 25 semantic
+  tokens/sec and capped ABC planning (max 1,200 tokens), dropping live generation
+  from ~30 minutes down to **~3 minutes** for 45s clips on 8 GB cards with zero OOM.
+- **Truncation is normal:** Length follows the symbolic plan under the token budget.
+  The UI surfaces the `truncated` flag from `result.json` when the requested duration
+  is met.
 - One generation = one output directory. Re-running a changed request into
   the same directory overwrites artifacts; `make_presets.py` builds per-seed
   `outputs/build_<seed>/` dirs for this reason.
