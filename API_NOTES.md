@@ -14,6 +14,7 @@ YuE2Pipeline.from_pretrained(
     device="cuda",          # cuda | mps | xpu | cpu | auto
     low_vram=True,          # keep only active AR/NAR modules on GPU (8 GB path)
     cache_dir="hf_cache",   # project-local weight cache
+    quantization="fp8",     # FP8 AR linear layers for Ada Lovelace (CC >= 8.9: RTX 40/50 series)
     # also supported: local_files_only=True, revision=..., vae_revision=...,
     # vae="m-a-p/YuE2-Vae" (default) | "m-a-p/YuE2-Vae-legacy" (benchmark decoder)
 )
@@ -82,5 +83,8 @@ without re-sampling (`yue2 decode runs/... /latent.npy --vae m-a-p/YuE2-Vae`).
 
 ## Environment facts (verified locally)
 
-- This machine: Windows, Python 3.15 system — YuE2 requires a **Python 3.12 venv**
-  (`setup.bat` creates `.venv` with 3.12; do not use the system interpreter).
+- This machine: Windows, Python 3.12 installed via `py -3.12` (system default Python 3.12.10).
+- GPU verified: NVIDIA GeForce RTX 4060 Laptop GPU (8.0 GiB VRAM, compute capability 8.9).
+- Setup verified: `torch==2.10.0+cu128`, `transformers==4.57.6`, `yue2-infer==0.1.6`.
+- `yue2 doctor` passed with `dependencies_ready: true`.
+- Smoke test located at `showcase/smoke_test.py`.
