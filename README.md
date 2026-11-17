@@ -73,6 +73,23 @@ Hover tooltips for the four dropdowns are ready in `prompt_compiler.TOOLTIPS`
 (one-liners explaining *when the track plays*, in game-design words) — wire
 them as `gr.Dropdown(..., info=...)` whenever convenient; nothing is required.
 
+## Performance & VRAM notes
+
+- The backend defaults to **FP8 AR weights** (`quantization="fp8"`, P3's
+  Hour-2 gate). Verified **loading** on an RTX 3060 Laptop 6 GB (Ampere,
+  software-emulated FP8 kernels). Full end-to-end generation on Ampere is
+  validated by probe runs before each demo — see the team log for results.
+- Realistic render budget on a 6 GB card: roughly **45 minutes per track**
+  (BF16 reference run: 259 s of music in ~2,724 s — plan ~14 min, generation
+  ~27 min, synthesis ~4 min). Plan your demo schedule around it.
+- **Truncation is normal:** YuE2 has no duration parameter; length follows the
+  symbolic plan under a token budget. A 140 BPM boss track truncated at
+  4:19 (still fully playable). The UI surfaces the `truncated` flag from
+  `result.json` — don't promise exact track lengths.
+- One generation = one output directory. Re-running a changed request into
+  the same directory overwrites artifacts; `make_presets.py` builds per-seed
+  `outputs/build_<seed>/` dirs for this reason.
+
 ## Credits
 
 - YuE2: `multimodal-art-projection/YuE` (verified API facts in `API_NOTES.md`)
