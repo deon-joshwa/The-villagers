@@ -6,6 +6,11 @@ Hour 0, not Hour 6 — the pitch is half the judges' score.**
 ## Your files (only these)
 `pitch/` (create it: slides, runbook, mock assets)
 
+**Branch:** ALL work happens on `dev` (one shared branch with the whole team).
+`git pull` before you start; push right after verifying. Never commit to
+`main` — see `GIT-WORKFLOW.md`. Your checkpoint: Hours 5–6 — pitch assets
+merge to `main` before rehearsals.
+
 ## Mission
 Produce every demo asset, the runbook, and rehearse the team.
 

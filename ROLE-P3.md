@@ -6,6 +6,12 @@ generated audio.**
 ## Your files (only these)
 `yue_backend.py`
 
+**Branch:** ALL work happens on `dev` (one shared branch with the whole team).
+`git pull` before you start; push right after verifying. Never commit to
+`main` — see `GIT-WORKFLOW.md`. **You are the MERGE MASTER:** you perform every
+`dev` → `main` checkpoint merge (Hours 0.5, 2, 4, 6, final) — commands in
+`GIT-WORKFLOW.md`.
+
 ## Mission
 Own `yue_backend.py`: pipeline loader, `generate()` (progress + truncation +
 FLAC→WAV), `fallback_instrumental()`, `read_score()`.

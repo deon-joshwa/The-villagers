@@ -6,6 +6,11 @@ dependency — stub mode means you can build and test the whole interface today.
 ## Your files (only these)
 `app.py`
 
+**Branch:** ALL work happens on `dev` (one shared branch with the whole team).
+`git pull` before you start; push right after verifying. Never commit to
+`main` — see `GIT-WORKFLOW.md`. Your checkpoint: Hours 4–5 — the wired UI
+lands on `main` at the Hour-4 integration merge.
+
 ## Mission
 Own `app.py`: 4 dropdowns + boss-lore box, compiled-prompt preview, generate
 button with live progress bar, ABC score viewer, WAV download, ghost-vocal

@@ -6,6 +6,11 @@ You have ZERO GPU dependency — you are never blocked.**
 ## Your files (only these)
 `contracts.md`, `prompt_compiler.py`, `tests/`, `README.md`
 
+**Branch:** ALL work happens on `dev` (one shared branch with the whole team).
+`git pull` before you start; push right after verifying. Never commit to
+`main` — see `GIT-WORKFLOW.md`. Your checkpoint: Hour 0.5 — contracts +
+compiler land on `main`; push early so the merge master can merge on time.
+
 ## Mission
 Own the mapping dictionaries and the compiled prompt; own `contracts.md` (the
 file every other agent codes against); own the README.

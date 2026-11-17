@@ -6,6 +6,11 @@ They are the only person allowed to run setup — protect their time.**
 ## Your files (only these)
 `setup.bat`, `run_app.bat`, `API_NOTES.md`, `make_presets.py`, `showcase/`
 
+**Branch:** ALL work happens on `dev` (one shared branch with the whole team).
+`git pull` before you start; push right after verifying. Never commit to
+`main` — see `GIT-WORKFLOW.md`. Your checkpoint: when the smoke test passes
+(~Hour 2), P3 merges `dev` → `main` — have everything pushed before that.
+
 ## Mission
 Get YuE2 installed and generating on the demo machine (Windows, 8 GB VRAM),
 then render the 3 seed-pinned showcase tracks.

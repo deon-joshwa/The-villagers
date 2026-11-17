@@ -5,6 +5,21 @@
 `ost-io-hackathon-plan.md` for the full plan; the 8-hour build is run by
 **five humans, each driving an AI agent (you). No human writes code by hand.**
 
+## Branch law — read this first
+
+There are exactly two branches, and the rules are absolute:
+
+- **`dev`** — THE workshop. ALL five humans commit here, all day. Everything
+  lives on this branch: code, docs, tests, pitch assets. When in doubt, a
+  commit goes here.
+- **`main`** — the showcase. **NEVER commit to `main` directly.** It is updated
+  only at checkpoints, by the merge master (P3), by merging `dev` → `main`.
+
+Your human's git loop, every session: `git pull` on `dev` BEFORE prompting you;
+commit + push to `dev` immediately after verifying. If a broken commit lands,
+the undo is `git revert <id>` + push — never `reset --hard`, never force-push.
+Full rules, checkpoint table, revert drill: `GIT-WORKFLOW.md`.
+
 ## Before you write anything, read — in this order:
 
 1. **`contracts.md`** — the interface rules. Never violate them.
@@ -14,6 +29,7 @@
    duration parameter; `from_pretrained` accepts `low_vram`, `cache_dir`.)
 3. **Your human's role file** (`ROLE-P1.md` … `ROLE-P5.md`) — your mission,
    your files, your verify commands, your hour targets.
+4. **`GIT-WORKFLOW.md`** — the branch rules and checkpoint merge schedule.
 
 ## Ownership — you may ONLY modify your human's files
 
@@ -38,7 +54,7 @@ parallel agents safe.
 
 ## Sync rhythm (your human does the git parts)
 
-**Pull → Prompt → Verify → Push**, repeated. Your human announces in chat:
+**Pull `dev` → Prompt → Verify → Push to `dev`**, repeated. Your human announces in chat:
 "Starting X" / "X works, pushed" / "Blocked on Y". Handshakes: kickoff (agents
 read contracts), Hour 2 gate (P1 announces live-gen vs cache-only), Hour 4
 integration (P3+P4), Hour 6 content freeze, Hour 7.5 P5 takes the machine.
