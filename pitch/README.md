@@ -11,8 +11,8 @@ All files owned by P5 (see AGENTS.md). Nothing here touches code.
 | `yue2_official_template_cover.webp` | Official template cover art (alt slide visual) |
 | `boss-fight-mock.png` | Mock boss-fight screen for the 2:30–3:00 close (1920×1080) |
 | `make_boss_mock.py` | Regenerates the mock: `python pitch\make_boss_mock.py` |
-| `demo-runbook.md` | One-page runbook — exact click order, cache-first |
-| `qa-cards.md` | The four judge questions, one line each — say the line, stop |
+| `demo-runbook.md` | One-page runbook — 5:00 Founder's Arena arc, exact click order, cache-first |
+| `qa-cards.md` | Judge Q&A, all five domains (technical/business/marketing/financial/investment) — say the line, stop |
 
 ## Upgrading the boss-fight mock
 

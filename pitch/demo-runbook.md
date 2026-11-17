@@ -1,7 +1,16 @@
-# OST.io — 3-Minute Demo Runbook (one page)
+# OST.io — 5:00 Pitch & Demo Runbook (one page)
 
-**Cache-first law:** the showcase presets carry the moment. Live generation is
-**kicked off and checked back on** — never the load-bearing part of the pitch.
+**Founder's Arena format:** 5:00 pitch + live demo, STRICT (overrunning =
+negative marks), then 5:00 Q&A. **Cache-first law:** the showcase presets
+carry the moment. Live generation is **kicked off and checked back on** —
+never the load-bearing part of the pitch.
+
+## Morning (before 9:00 AM — event starts on the hour)
+
+- [ ] Whole team present before 9:00
+- [ ] **Repo made PUBLIC and link submitted** (GitHub → Settings → General →
+      Danger Zone → Change visibility). Submit the `main` branch URL.
+- [ ] Every member has read `qa-cards.md` — Q&A goes to ANYONE on the team
 
 ## Pre-show (T-60 min, P5 human)
 
@@ -14,14 +23,18 @@
 - [ ] **Backup recorded:** screen-record the stub demo (`set YUE_STUB=1` +
       `python app.py`) and one preset playback. If the laptop dies, play the video.
 
-## The 3-minute arc — exact click order
+## The 5:00 arc — exact click order
 
 | Clock | Beat | Do exactly this |
 |---|---|---|
 | 0:00–0:40 | **The before** | Full-screen `pitch\slide1_yue2_comfyui_nodegraph.png`. Say the script (see `slide-1-the-before.md`). **Click 1:** switch to the OST.io browser tab. |
 | 0:40–1:30 | **The four clicks** | **Click 2:** dropdown **"1. Scene Context"** → **Boss Battle (Phase 1 / 2)**. **Click 3:** **"2. Mood / Atmosphere"** → **Menacing / Ominous**. **Click 4:** **"3. Music Style & Instruments"** → **Dark Orchestral + Brass**. **Click 5:** **"4. Combat Intensity"** → **High Adrenaline / Combat (120-150 BPM)**. **Click 6:** in **"ADVANCED: Custom Scene / Boss Lore (optional)"** type: *"A giant clockwork automaton covered in rust, weeping oil as it attacks."* **Click 7:** open the **"Show Compiled Prompt"** accordion — the compiled prompt is already there (it live-updates on every change); click **"Preview Compiled Prompt"** if it hasn't filled. Point at the compiled **style** box: "watch the translation — game words became music prompts." |
 | 1:30–2:30 | **Kick off + white-box reveal** | **Click 8:** press **"GENERATE TRACK"** — the progress bar starts (NAR stage, then VAE). Say: "That will take a couple of minutes, and that's honest — watch what it's planning." **Click 9:** under **"Preset Showcase"** click **"Boss / Menacing / Dark Orchestral"** — the **"Showcase playback"** panel starts playing instantly (cache). Point at the **"Generated ABC Score (melody & chords)"** panel that just filled: "YuE 2 plans the melody and chords as symbols first — our UI surfaces that plan so the dev can see *what* they are getting. No music theory required." Scroll the score slowly. |
-| 2:30–3:00 | **The close** | **Click 10:** switch to the full-screen `pitch\boss-fight-mock.png` while the preset track plays. Close line: "100% local, 8 GB GPU, and the music is yours to ship — individual devs sell games with YuE 2 music royalty-free. OST.io: compose in game design, not in acoustic tokens." |
+| 2:30–2:50 | **Demo payoff** | **Click 10:** switch to the full-screen `pitch\boss-fight-mock.png` while the preset track plays. Line: "100% local, 8 GB GPU, and the music is yours to ship — individual devs sell games with YuE 2 music royalty-free." |
+| 2:50–3:30 | **How it works (P3)** | Open-source YuE2 model, 100% local on an 8 GB gaming laptop in low-VRAM mode, ~1 min/song. "No cloud. No subscription. Nothing leaves the machine." |
+| 3:30–4:10 | **Business (P2)** | Market: $1.06B narrow / $5.55B broad (2026), growing 20–30%/yr. Revenue: Free for individuals · Studio $499–2,499/yr · Cloud $9–19/mo · Enterprise $25K+ · Marketplace 70-30 (numbers: `qa-cards.md`) |
+| 4:10–4:45 | **The ask (lead)** | "$400K on a SAFE — $3.6M pre, $4M post, 10%. Use of funds: commercial model license, Unity/Unreal plugins, two engineers. Milestones: license signed → 10K downloads → 100 studios → $120K ARR. For scale: Suno raised $400M at a $5.4B valuation." |
+| 4:45–5:00 | **The close (P5)** | Back to full-screen `boss-fight-mock.png`, track playing: "The weights live on the dev's machine. OST.io: compose in game design, not in acoustic tokens." |
 | After Q&A | **Check back** | Glance at the live generation: the **"Playback"** panel + **"Download .WAV for Unity"** are filled and the status line shows "**Done in … s.**" (or the honest "⚠️ TRUNCATED by the token cap" note). If it errored — the UI shows a friendly message — say "and that's why presets carry the demo," and show the recorded backup. |
 
 ## Talk-ammo (P2's dropdown HELP lines, from prompt_compiler.py)
@@ -44,4 +57,4 @@ Drop one of these per beat 2 click — they explain game value, not music theory
 1. This file is one page. 2. Every click above exists in `app.py` as shipped
 (re-verified against commit `5c23806`: 4 dropdowns, boss-lore textbox,
 "Preview Compiled Prompt", "GENERATE TRACK", preset buttons, playback/score
-panels). 3. Timing hits 3:00 in rehearsal #1 (Hour 4–5), #2 (Hour 6–7), final 7.5.
+panels). 3. Timing hits 4:30 in rehearsal #1 (Hour 4–5), #2 (Hour 6–7), final 7.5.
