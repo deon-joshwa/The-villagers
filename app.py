@@ -45,7 +45,19 @@ button.primary:hover {background: #8f66ff !important;}
 button.secondary, button:not(.primary):not(.lg) {background: #1d1d2b !important; color: #e8e8f0 !important; border: 1px solid #34344a !important;}
 input, textarea, .wrap {background: #1d1d2b !important; color: #e8e8f0 !important;}
 .block, .form {border-color: #34344a !important; background: #1d1d2b !important;}
-label span {color: #c9c9d8 !important;}
+label span {color: #c9c9d8 !important; background: transparent !important;}
+.gradio-container {
+  --block-label-background-fill: #1d1d2b;
+  --block-label-text-color: #c9c9d8;
+  --block-background-fill: #1d1d2b;
+  --button-secondary-background-fill: #1d1d2b;
+  --button-secondary-text-color: #e8e8f0;
+}
+[data-testid="file"], .file-preview {
+  background: #1d1d2b !important; color: #e8e8f0 !important; border-color: #34344a !important;}
+.icon-button, button.download-button {
+  background: #1d1d2b !important; color: #e8e8f0 !important; border: 1px solid #34344a !important;}
+.gradio-container .prose p {color: #c9c9d8 !important;}
 """
 
 
@@ -77,7 +89,7 @@ def safe_preview(scene, mood, style, intensity, lore):
 
 with gr.Blocks(title="OST.io") as demo:
     gr.Markdown("# OST.io — Game words in. Game music out.")
-    gr.Markdown("Four game-design dropdowns → an optimized YuE 2 prompt → a game-ready track + the ABC score it planned.")
+    gr.Markdown("Four game-design dropdowns → an optimized music prompt → a game-ready track + the ABC score it planned.")
 
     with gr.Row():
         scene = gr.Dropdown(
@@ -97,11 +109,11 @@ with gr.Blocks(title="OST.io") as demo:
         label="ADVANCED: Custom Scene / Boss Lore (optional)",
         placeholder="A giant clockwork automaton covered in rust, weeping oil as it attacks.")
 
-    with gr.Accordion("Show Compiled YuE Prompt", open=False):
+    with gr.Accordion("Show Compiled Prompt", open=False):
         preview = gr.Textbox(label="style", lines=4, interactive=False)
-        preview_btn = gr.Button("Preview Compiled YuE Prompt")
+        preview_btn = gr.Button("Preview Compiled Prompt")
 
-    generate_btn = gr.Button("GENERATE TRACK (YuE 2)", variant="primary")
+    generate_btn = gr.Button("GENERATE TRACK", variant="primary")
     status = gr.Markdown("Ready.")   # duration + truncated flag land here
 
     with gr.Row():
@@ -121,6 +133,20 @@ with gr.Blocks(title="OST.io") as demo:
     preview_btn.click(safe_preview, inputs5, preview)
     for comp in inputs5:
         comp.change(safe_preview, inputs5, preview)
+
+    # --- tooltips: per-option hover text from prompt_compiler.TOOLTIPS (single
+    #     source of truth); static hint until a selection is made ---
+    _HINTS = {"scene": "When does this track play?", "mood": "What is the player feeling?",
+              "style": "The sound palette", "intensity": "How fast is the action?"}
+
+    def _tip_fn(key):
+        def fn(sel):
+            return gr.update(info=TOOLTIPS[key].get(sel, _HINTS[key]))
+        return fn
+
+    for comp, key in ((scene, "scene"), (mood, "mood"),
+                      (style, "style"), (intensity, "intensity")):
+        comp.change(_tip_fn(key), comp, comp)
 
     # --- generate: stub path returns showcase files; real path wires gr.Progress ---
     def do_generate(scene, mood, style, intensity, lore, progress=gr.Progress()):
