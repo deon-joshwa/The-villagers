@@ -8,6 +8,7 @@ All failures surface as gr.Error(...) with a human sentence. demo.queue() stays
 -- long generations need it.
 """
 
+import inspect
 import os
 
 import gradio as gr
@@ -75,7 +76,14 @@ def safe_preview(scene, mood, style, intensity, lore):
     return compile_style(scene, mood, style, intensity, lore)
 
 
-with gr.Blocks(title="OST.io") as demo:
+# NOTE (P2 emergency fix, announced in chat): gradio 5 wants css on the
+# Blocks constructor; gradio 6 REMOVES it there and wants it on launch().
+# Detect which one this install supports. P4 owns this file -- please
+# review/adopt.
+_LAUNCH_TAKES_CSS = "css" in inspect.signature(gr.Blocks.launch).parameters
+_BLOCKS_CSS = {} if _LAUNCH_TAKES_CSS else {"css": CSS}
+
+with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
     gr.Markdown("# OST.io — Game words in. Game music out.")
     gr.Markdown("Four game-design dropdowns → an optimized YuE 2 prompt → a game-ready track + the ABC score it planned.")
 
@@ -193,4 +201,7 @@ with gr.Blocks(title="OST.io") as demo:
 
 
 demo.queue()
-demo.launch(server_name="127.0.0.1", server_port=7860, inbrowser=True, css=CSS)
+if _LAUNCH_TAKES_CSS:
+    demo.launch(server_name="127.0.0.1", server_port=7860, inbrowser=True, css=CSS)
+else:
+    demo.launch(server_name="127.0.0.1", server_port=7860, inbrowser=True)
