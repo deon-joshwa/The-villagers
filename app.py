@@ -1,4 +1,4 @@
-"""YuE-Studio UI -- Gradio Blocks. Owner: P4.
+"""OST.io UI -- Gradio Blocks. Owner: P4.
 
 Run:  run_app.bat  (or: python app.py)
 Stub: set YUE_STUB=1 to test the UI with zero GPU (returns showcase files).
@@ -41,8 +41,8 @@ def read_text(path, default=SAMPLE_ABC):
         return default
 
 
-with gr.Blocks(css=CSS, title="YuE-Studio") as demo:
-    gr.Markdown("# YuE-Studio: Game Audio Synthesizer (Local)")
+with gr.Blocks(css=CSS, title="OST.io") as demo:
+    gr.Markdown("# OST.io: Game Audio Synthesizer (Local)")
     with gr.Row():
         scene = gr.Dropdown(list(SCENE_MAP), label="1. Scene Context")
         mood = gr.Dropdown(list(MOOD_MAP), label="2. Mood / Atmosphere")

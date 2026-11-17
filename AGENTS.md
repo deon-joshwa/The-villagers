@@ -1,8 +1,8 @@
 # AGENTS.md — read this before writing any code
 
-**Project:** YuE-Studio — a local game-music generator wrapping the YuE2 model
+**Project:** OST.io — a local game-music generator wrapping the YuE2 model
 (dropdowns in game language → music prompts → generated tracks). See
-`yue-studio-hackathon-plan.md` for the full plan; the 8-hour build is run by
+`ost-io-hackathon-plan.md` for the full plan; the 8-hour build is run by
 **five humans, each driving an AI agent (you). No human writes code by hand.**
 
 ## Before you write anything, read — in this order:

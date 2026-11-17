@@ -1,4 +1,4 @@
-# YuE-Studio — Interface Contracts (every agent codes against this)
+# OST.io — Interface Contracts (every agent codes against this)
 
 > Single source of truth for how the pieces fit. Created at kickoff; changes require
 > team sign-off in chat. File ownership: one file, one owner (see plan §7.2).
