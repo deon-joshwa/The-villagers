@@ -1,9 +1,100 @@
 X:1
-T:placeholder score (run make_presets.py)
-M:4/4
-L:1/8
-K:Am
-V:Vocal
-z8|]
-V:Ins
-z8|]
+T:
+M:2/4
+L:1/32
+Q:1/4=86
+V: Vocal clef=treble name="Vocal Melody" snm="Vocal"
+V: Ins clef=treble name="Ins Melody" snm="Inst."
+K:D
+% intro
+V: Vocal
+z12"D"z4|"D"z16|"D"z16|"D"z16|
+V: Ins
+Z|d4d2d2d4d2d2|d4d2d2e2f2e2d2|d4d2d2d4d2d2|
+V: Vocal
+"D"z16|"D"z16|"D"z16|"G"z16|
+V: Ins
+d4d2d2e2f2e2d2|a4a4f8|e2f2e2d2B4A4|B4B2A2B2d2e2f2|
+V: Vocal
+"A"z16|"D"z16|"D"z16|"G"z16|
+V: Ins
+e8e4d4|a4a4f8|e2f2e2d2B4A4|B4B2A2B2d2e2f2|
+V: Vocal
+"A"z16|
+V: Ins
+e16|
+% verse
+V: Vocal
+"D"d4d4a8|"D"f8z8|"G"e4f4B4A4|"D"d8z8|
+V: Ins
+Z4|
+V: Vocal
+"D"d4d4a8|"D"f8z8|"G"e4f4B4A4|"D"d8z8|
+V: Ins
+Z4|
+V: Vocal
+"D"d8d6B2|"D"d2e2f4f4e2d2|"G"e6f2e2d2B2A2|"D"A8z8|
+V: Ins
+Z4|
+V: Vocal
+"D"d8d6B2|"D"d2e2f4f4e2d2|"G"e6f2e2d2B2A2|"D"d8z8|
+V: Ins
+Z4|
+% chorus
+V: Vocal
+"D"d8a4z4|"D"d8a4z4|"G"B6A2B4f4|"A"e8z8|
+V: Ins
+Z4|
+V: Vocal
+"D"d8a4z4|"D"d8a4z4|"G"B6A2B4f4|"A"e8z8|
+V: Ins
+Z3|z8f2e2d2B2|
+V: Vocal
+"D"d8a4z4|"D"d8a4z4|"G"B6A2B4f4|"A"e8z8|
+V: Ins
+Z3|z8f2e2d2B2|
+V: Vocal
+"D"d8a4z4|"D"d8a4z4|"G"B6A2B4f4|"A"e8z8|
+V: Ins
+Z3|z8f2e2d2B2|
+V: Vocal
+"D"z16|"D"z16|
+V: Ins
+d16-|d16|
+% verse
+V: Vocal
+"D"d4d4a8|"D"f8z8|"G"e4f4B4A4|"D"d8z8|
+V: Ins
+Z4|
+V: Vocal
+"D"d4d4a8|"D"f8z8|"G"e4f4B4A4|"D"d8z8|
+V: Ins
+Z4|
+V: Vocal
+"D"d8d6B2|"D"d2e2f4f4e2d2|"G"e6f2e2d2B2A2|"D"A8z8|
+V: Ins
+Z3|z8f2e2d2B2|
+V: Vocal
+"D"d8d6B2|"D"d2e2f4f4e2d2|"G"e6f2e2d2B2A2|"D"d8z8|
+V: Ins
+Z4|
+% chorus
+V: Vocal
+"D"d8a4z4|"D"d8a4z4|"G"B6A2B4f4|"A"e8z8|
+V: Ins
+Z3|z8f2e2d2B2|
+V: Vocal
+"D"d8a4z4|"D"d8a4z4|"G"B6A2B4f4|"A"e8z8|
+V: Ins
+Z3|z8f2e2d2B2|
+V: Vocal
+"D"d8a4z4|"D"d8a4z4|"G"B6A2B4f4|"A"e8z8|
+V: Ins
+Z3|z8f2e2d2B2|
+V: Vocal
+"D"d8a4z4|"D"d8a4z4|"G"B6A2B4f4|"A"e8z8|
+V: Ins
+Z3|z8f2e2d2B2|
+% outro
+V: Vocal
+"D"z
