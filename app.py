@@ -60,7 +60,52 @@ label span {color: #c9c9d8 !important; background: transparent !important;}
 .icon-button, button.download-button {
   background: #1d1d2b !important; color: #e8e8f0 !important; border: 1px solid #34344a !important;}
 .gradio-container .prose p {color: #c9c9d8 !important;}
+.ostio-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #252538 0%, #151522 100%);
+  border-top: 2px solid rgba(255, 255, 255, 0.25);
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  border-right: 2px solid rgba(0, 0, 0, 0.6);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.7);
+  border-radius: 12px;
+  box-shadow: 
+    inset 1px 1px 2px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 3px rgba(0, 0, 0, 0.8),
+    0 6px 14px rgba(0, 0, 0, 0.45);
+  padding: 8px 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.ostio-logo-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 
+    inset 1px 1px 2px rgba(255, 255, 255, 0.25),
+    inset -1px -1px 3px rgba(0, 0, 0, 0.8),
+    0 8px 18px rgba(124, 77, 255, 0.25);
+}
 """
+
+
+def get_header_html():
+    logo_path = os.path.join(os.path.dirname(__file__), "assets", "ostio.png")
+    img_tag = ""
+    if os.path.exists(logo_path):
+        import base64
+        with open(logo_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+        img_tag = f'<img src="data:image/png;base64,{b64}" alt="OST.io Logo" style="height: 52px; max-width: 190px; object-fit: contain; display: block;" />'
+    return f"""
+    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 16px; flex-wrap: wrap;">
+        <div class="ostio-logo-badge">
+            {img_tag}
+        </div>
+        <div>
+            <h1 style="margin: 0; padding: 0; font-size: 2.1rem; font-weight: 700; color: #f4f4fa; letter-spacing: -0.5px;">OST.io — Game words in. Game music out.</h1>
+            <p style="margin: 4px 0 0 0; color: #a5a5c0; font-size: 1.05rem;">Four game-design dropdowns → an optimized music prompt → a game-ready track + the ABC score it planned.</p>
+        </div>
+    </div>
+    """
 
 
 def read_text(path, default=SAMPLE_ABC):
@@ -97,8 +142,7 @@ _LAUNCH_TAKES_CSS = "css" in inspect.signature(gr.Blocks.launch).parameters
 _BLOCKS_CSS = {} if _LAUNCH_TAKES_CSS else {"css": CSS}
 
 with gr.Blocks(title="OST.io", **_BLOCKS_CSS) as demo:
-    gr.Markdown("# OST.io — Game words in. Game music out.")
-    gr.Markdown("Four game-design dropdowns → an optimized music prompt → a game-ready track + the ABC score it planned.")
+    gr.HTML(get_header_html())
 
     with gr.Row():
         scene = gr.Dropdown(
