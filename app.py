@@ -60,29 +60,28 @@ label span {color: #c9c9d8 !important; background: transparent !important;}
 .icon-button, button.download-button {
   background: #1d1d2b !important; color: #e8e8f0 !important; border: 1px solid #34344a !important;}
 .gradio-container .prose p {color: #c9c9d8 !important;}
-.ostio-logo-badge {
+.ostio-logo-container, .ostio-logo-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #252538 0%, #151522 100%);
-  border-top: 2px solid rgba(255, 255, 255, 0.25);
-  border-left: 2px solid rgba(255, 255, 255, 0.2);
-  border-right: 2px solid rgba(0, 0, 0, 0.6);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.7);
-  border-radius: 12px;
-  box-shadow: 
-    inset 1px 1px 2px rgba(255, 255, 255, 0.2),
-    inset -1px -1px 3px rgba(0, 0, 0, 0.8),
-    0 6px 14px rgba(0, 0, 0, 0.45);
-  padding: 8px 16px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
-.ostio-logo-badge:hover {
-  transform: translateY(-1px);
-  box-shadow: 
-    inset 1px 1px 2px rgba(255, 255, 255, 0.25),
-    inset -1px -1px 3px rgba(0, 0, 0, 0.8),
-    0 8px 18px rgba(124, 77, 255, 0.25);
+.ostio-logo-img {
+  height: 56px;
+  max-width: 220px;
+  object-fit: contain;
+  display: block;
+  -webkit-mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, black 70%, transparent 100%);
+  mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, black 70%, transparent 100%);
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+.ostio-logo-container:hover .ostio-logo-img, .ostio-logo-badge:hover .ostio-logo-img {
+  transform: scale(1.02);
+  filter: drop-shadow(0 0 10px rgba(124, 77, 255, 0.4));
 }
 """
 
@@ -94,10 +93,10 @@ def get_header_html():
         import base64
         with open(logo_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
-        img_tag = f'<img src="data:image/png;base64,{b64}" alt="OST.io Logo" style="height: 52px; max-width: 190px; object-fit: contain; display: block;" />'
+        img_tag = f'<img class="ostio-logo-img" src="data:image/png;base64,{b64}" alt="OST.io Logo" />'
     return f"""
     <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 16px; flex-wrap: wrap;">
-        <div class="ostio-logo-badge">
+        <div class="ostio-logo-container">
             {img_tag}
         </div>
         <div>
